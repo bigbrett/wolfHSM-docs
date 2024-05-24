@@ -38,7 +38,7 @@ if (rc != WH_ERROR_OK) {
 
 ## The Client Context
 
-The client context structure (`whClientContext`) holds the runtime state of the client and represents the enpoint of the connection with the server. There is a one-to-one relationship between client and server contexts, meaning an application that interacts with multiple servers will need multiple client contexts - one for each server. Each client API function takes a client context as an argument, indicating which server connection the operations will correspond to. If familiar with wolfSSL, the client context structure is analogous to the `WOLFSSL` connection context structure.
+The client context structure (`whClientContext`) holds the runtime state of the client and represents the endpoint of the connection with the server. There is a one-to-one relationship between client and server contexts, meaning an application that interacts with multiple servers will need multiple client contexts - one for each server. Each client API function takes a client context as an argument, indicating which server connection the operations will correspond to. If familiar with wolfSSL, the client context structure is analogous to the `WOLFSSL` connection context structure.
 
 ### Initializing the client context 
 
@@ -92,7 +92,7 @@ whClientContext clientCtx = {0};
 wh_Client_Init(&clientCtx, &clientCfg);
 ```
 
-The client context is now intialized and can be used with the client library API functions in order to do work. Here is an example of sending an echo request to the server:
+The client context is now initialized and can be used with the client library API functions in order to do work. Here is an example of sending an echo request to the server:
 
 ```c
 /* Step 6: Use the client APIs to interact with the server */
@@ -185,7 +185,7 @@ byte myUpdate[]	= “This is my update.”
 whClient_NvmAddObject(&clientCtx, &myMeta, sizeof(myUpdate), myUpdate);
 ```
 
-For objects that should not be copiend and sent over the transport, there exist DMA versions of the `NvmAddObject` functions. These pass the data to the server by reference rather than by value, allowing the server to access the data in memory directly. Note that if your platform requires custom address translation or cache invalidation before the server may access client addressses, you will need to implement a [DMA callback](TODO).
+For objects that should not be copied and sent over the transport, there exist DMA versions of the `NvmAddObject` functions. These pass the data to the server by reference rather than by value, allowing the server to access the data in memory directly. Note that if your platform requires custom address translation or cache invalidation before the server may access client addresses, you will need to implement a [DMA callback](TODO).
 
 ```
 whNvmMetadata myMeta = {
@@ -218,7 +218,7 @@ whClient_NvmReadDma(&clientCtx
 iint wh_Client_NvmReadDma(&clientCtx, myid, offset, sizeof(myData), &myBuffer, &serverRc);
 ```
 
-Objects can be deleted/destroyed using the `NvmDestroy` functions. These funcitons take a list (array) of object IDs to be deleted. IDs in the list that are not present in NVM do not cause an error.
+Objects can be deleted/destroyed using the `NvmDestroy` functions. These functions take a list (array) of object IDs to be deleted. IDs in the list that are not present in NVM do not cause an error.
 
 ```c
 whNvmId idList[] = {123, 456};
