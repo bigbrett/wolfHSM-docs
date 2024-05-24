@@ -57,7 +57,7 @@ communication with the server.
 
 ## Ports
 
-wolfHSM is a library that provides an API for cryptographic operations, key management, and non-volatile storage, but itself is not executable and it does not contain any code to interact with any specific hardware. In order for wolfHSM to run on a specific device, the library must be configured with the necessary hardware drivers and abstraction layers such that the server application can run and communicate with the client. Specifically, getting wolfHSM to run on real hardware requires implementation of:
+wolfHSM itself is not executable and it does not contain any code to interact with any specific hardware. In order for wolfHSM to run on a specific device, the library must be configured with the necessary hardware drivers and abstraction layers such that the server application can run and communicate with the client. Specifically, getting wolfHSM to run on real hardware requires implementation of:
 
 - Server application startup and hardware initialization
 - Server wolfCrypt configuration

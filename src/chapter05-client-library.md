@@ -5,7 +5,9 @@ The client library API is the primary mechanism through which users will interac
 
 ## API Return Codes
 
-All client API functions return a wolfHSM error code indicating success or the type of failure. Some failures are critical errors, while others may simply indicate an action is required from the caller (e.g. `WH_ERROR_NOTREADY` in the case of a non-blocking operation). Many client APIs also propagate a server error code (and in some cases an additional status) to the caller, allowing for the case where the underlying request transaction succeeded but the server was unable to perform the operation. Examples of this include requesting an NVM object from the server that doesn't exist, attempting to add an object when NVM is full, or trying to use a cryptographic algorithm that the server is not configured to support. 
+All client API functions return a wolfHSM error code indicating success or the type of failure. Some failures are critical errors, while others may simply indicate an action is required from the caller (e.g. `WH_ERROR_NOTREADY` in the case of a non-blocking operation). Many client APIs also propagate a server error code (and in some cases an additional status) to the caller, allowing for the case where the underlying request transaction succeeded but the server was unable to perform the operation. Examples of this include requesting an NVM object from the server that doesn't exist, attempting to add an object when NVM is full, or trying to use a cryptographic algorithm that the server is not configured to support.
+
+Error codes are defined in `wolfhsm/wh_error.h`. Refer to the API documentation for more details.
 
 ## Split Transaction Processing
 
@@ -53,7 +55,7 @@ The general steps to configure a client are:
 5. Initialize the client with the client configuration by calling `wh_Client_Init()`
 6. Use the client APIs to interact with the server
 
-Here is a bare-minimum example of configuring a client application to use the built-in shared memory transpor
+Here is a bare-minimum example of configuring a client application to use the built-in shared memory transport:
 
 ```c
 #include <string.h> /* for memcmp() */
@@ -237,8 +239,50 @@ int wh_Client_NvmList(whClientContext* c,
 
 For a full description of all the NVM API functions, please refer to the [API documentation](todo).
 
+## Key Management
+
+
 
 ## Cryptography
+
+When using wolfCrypt in the client application, compatible crypto operations can be executed on the wolfHSM server by passing `WOLFHSM_DEV_ID` as the `devId` argument. The wolfHSM client must be initialized before using any wolfHSM remote crypto.
+
+If wolfHSM does not yet support that algorithm, the API call will return `CRYPTOCB_UNAVAILABLE`. See [supported wolfCrypt algorithms](todo) for the full list of algorithms wolfHSM supports for remote HSM execution.
+
+Here is an example of how a client application would perform an `AES CBC` encryption operation on the wolfHSM server:
+
+```c
+#include "wolfhsm/client.h"
+#include "wolfssl/wolfcrypt/aes.h"
+
+whClientContext clientCtx;
+whClientCfg clientCfg = { /* config */ };
+
+wh_Client_Init(&clientCtx, &clientCfg);
+
+Aes aes;
+byte key[AES_128_KEY_SIZE] = { /* AES key */ };
+byte iv[AES_BLOCK_SIZE] = { /* AES IV */ };
+
+byte plainText[AES_BLOCK_SIZE] = { /* plaintext */ };
+byte cipherText[AES_BLOCK_SIZE];
+
+wc_AesInit(&aes, NULL, WOLFHSM_DEV_ID);
+
+wc_AesSetKey(&aes, &key, AES_BLOCK_SIZE, &iv, AES_ENCRYPTION);
+
+wc_AesCbcEncrypt(&aes, &cipherText, &plainText, sizeof(plainText));
+
+wc_AesFree(&aes);
+```
+
+If it was desired to run the crypto locally on the client, all that is necessary is to pass `INVALID_DEVID` to `wc_AesInit()`:
+
+```c
+wc_AesInit(&aes, NULL, INVALID_DEVID);
+```
+
+Outside of the steps mentioned above, the usage of the wolfHSM API should be otherwise unchanged. Please consult the wolfCrypt API reference inside the [wolfSSL manual](https://www.wolfssl.com/documentation/manuals/wolfssl/index.html) for further usage instructions and the extensive list of supported cryptographic algorithms.
 
 ## AUTOSAR SHE API
 

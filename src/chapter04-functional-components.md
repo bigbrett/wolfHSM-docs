@@ -54,7 +54,7 @@ The communication layer of wolfHSM is designed to provide reliable, bidirectiona
 ### Key Components
 
 - Client/Server APIs: Main interface for communicating between client and server. These are the APIs that are directly used by user applications.
-- Comms layer: Defines the format and structure of messages exchanged between clients and servers, and provides an abstract interface to the underlying transport layer implementation, providing a consistend interface for sending and receiving messages.
+- Comms layer: Defines the format and structure of messages exchanged between clients and servers, and provides an abstract interface to the underlying transport layer implementation, exposing a consistent interface for sending and receiving messages.
 - Transport Layer: Concrete implementations of the underlying transport. Defines how data is actualy transported between client and server.
 
 ### Client/Server APIs:
@@ -73,11 +73,6 @@ wh_Client_EchoRequest(&clientCtx, sendLen, &sendBuffer));
 while (WH_ERROR_NOTREADY == wh_Client_EchoResponse(client, &recv_len, recv_buffer));
 ```
 
-And using the server API to receive the echo request from the client and send the response
-```c
-/* pol
-```
-
 ### Comms Layer
 
 The comms layer encapsulates the messaging structure and control logic to send and rececive data from lower level transports. The comms layer is directly invoked by the higher level client and server APIs. The comms layer provides comm client and comm server abstractions that hold communication state and provide the abstract interface functions to interact with lower level transports. The comms layer API consists of send and receive functions for requests and responses, where the requests and responses pertain to messages rather than high level operations.
@@ -88,8 +83,8 @@ The server will process a single request at a time to ensure client isolation.
 #### Messages
 
 Messages comprise a header with a variable length payload.  The header indicates
-the sequence id, and type of a request or response.  The header also provides 
-additional fields to provide auxiliary flags or session information. 
+the sequence id, and type of a request or response.  The header also provides
+additional fields to provide auxiliary flags or session information.
 
 ```c
 /* wolfhsm/wh_message.h */
@@ -102,32 +97,34 @@ typedef struct {
 } whCommHeader;
 ```
 
-Messages are used to encapsulate the request data necessary for the server to 
+Messages are used to encapsulate the request data necessary for the server to
 execute the desired function and for the response to provide the results of the
-function execution back to the client.  Message types are grouped based on the 
+function execution back to the client.  Message types are grouped based on the
 component that is performing the function and uniquely identify which of the
 enumerated functions is being performed.  To ensure compatibility (endianness,
-and version), messages include a Magic field which has known values used to 
-indicate what operations are necessary to demarshall data passed within the 
-payload for native processing.  Each functional component has a "remote" 
+and version), messages include a Magic field which has known values used to
+indicate what operations are necessary to demarshall data passed within the
+payload for native processing.  Each functional component has a "remote"
 implementation that converts between native values and the "on-the-wire" message
 formats.  The servers ensures the response format matches the request format.
 
 In addition to passing data contents within messages, certain message types also
 support passing shared or mapped memory pointers, especially for performance-
 critical operations where the server component may be able to directly access
-the data in a DMA fashion.  To avoid integer pointer size (IPS) and size_t
-differences, all pointers and sizes should be sent as uint64_t when
+the data in a DMA fashion.  To avoid integer pointer size (IPS) and `size_t`
+differences, all pointers and sizes should be sent as `uint64_t` when
 possible.
 
-Messages are encoded in the "on-the-wire" format using the Magic field of the 
+Messages are encoded in the "on-the-wire" format using the Magic field of the
 header indicating the specified endianness of structure members as well as the
-version of the communications header (currently 0x01).  Server components that 
-process request messages translate the provided values into native format, 
+version of the communications header (currently 0x01).  Server components that
+process request messages translate the provided values into native format,
 perform the task, and then reencode the result into the format of the request.
 Client response handling is not required to process messages that do not match
 the request format. Encoded messages assume the same size and layout as the
 native structure, with the endianness specified by the Magic field.
+
+Here is an example of how the client comm layer sends a request:
 
 ```c
 uint16_t req_magic = wh_COMM_MAGIC_NATIVE;
@@ -154,7 +151,7 @@ client/server should Cleanup any context as a result.
 Transports provide intact packets (byte sequences) of variable size (up to a
 maximum MTU), to the messaging layer for the library to process as a request or 
 response. Transports implement the abstract interface defined by `whTransportCb`
-and are invoked directly by the commClient/commServer when needing to send and 
+and are invoked directly by the commClient/commServer when needing to send and
 receive data.
 
 Custom transport modules that implement the `whTransportClientCb` interface
@@ -164,6 +161,15 @@ via the standard server and client request/response functions.
 ```c
  /* Example transport module */
 ```
+
+#### Supported Transports
+
+wolfHSM ships with two built-in transports: a memory buffer transport (`wh_transport_mem.c`) and a POSIX TCP socket transport (`port/posix_transport_tcp.c`).
+
+The memory transport is the default transport for most embedded wolfHSM ports, and is part of the core wolfHSM library. It provides a concrete implementation of the transport callbacks using shared memory blocks between client and server. The shared memory transport mechanism works by allocating two blocks of memory, one for incoming requests and one for outgoing responses. The client writes requests to the incoming memory block and reads responses from the outgoing memory block. The server reads requests from the incoming memory block and writes responses to the outgoing memory block. Each block contains control and status flags signaling to the consumer when it is ready for use. This mechanism is designed to be fast and efficient, as it avoids the need for system calls or network communication.
+
+
+The POSIX TCP transport is part of the wolfHSM POSIX port. It uses TCP sockets as the transport medium for data between client and server. The sockets are IPv4 only and non-blocking.
 
 ## Non Volatile Memory
 
@@ -202,7 +208,7 @@ Length (whNvmSize len): The length of the data associated with the object, in by
 
 ### NVM Architecture
 
-The wolfHSM server uses a layered configuration approach to handle Non-Volatile Memory (NVM) operations. The configuration is divided into generic and specific parts, allowing for flexibility and customization.
+The wolfHSM server follows the generic component architecture approach to handle Non-Volatile Memory (NVM) operations. The configuration is divided into generic and specific parts, allowing for flexibility and customization.
 
 1. **Generic Configuration (wh_nvm.h):** This header file defines the generic interface for NVM operations. It includes function pointers for NVM operations like `nvm_Read`, `nvm_Write`, `nvm_Erase`, and `nvm_Init`. These function pointers are part of the `whNvmConfig` structure, which is used to bind an actual NVM implementation to the abstract NVM interface.
 
@@ -212,14 +218,41 @@ The `whServerContext` structure includes a `whNvmConfig` member. This is used to
 
 Steps required to initialize NVM on the server are:
 
-1. Allocate and initialize a `whNvmConfig` structure, providing the specific NVM operations (e.g., from `wh_nvm_flash.c`).
+1. Allocate and initialize a `whNvmConfig` structure, providing bindings to a specific NVM back-end (e.g., from `wh_nvm_flash.c`).
 2. Allocate and initialize a `whServerConfig` structure, and set its `nvmConfig` member to the `whNvmConfig` structure initialized in step 1.
 3. Allocate a `whServerContext` structure.
 4. Initialize the server with the `whServerConfig` structure by calling `wh_Server_Init()`.
 
 This allows the server to use the configured NVM operations on the given backing store, which can be easily swapped out by providing a different impelementation in the `whNvmConfig` structure.
 
+### NVM Back-Ends
+
+Currently, wolfHSM only supports one NVM back-end provider: the NVM flash module (`wh_nvm_flash.c`). This module provides a concrete implementation of the NMV interface functions (`wh_nvm.h`), mapping the NVM data store to a flash memory device. The low-level flash drivers are device-specific and themselves specified as generic components (`wh_flash.h`) that can be swapped out depending on the target hardware.
+
+## Key Management
+
+The wolfHSM library provides comprehensive key management capabilities, including storing, loading, and exporting keys from non-volatile memory, caching of frequently used keys in RAM for fast access, and interacting with hardware-exclusive device keys. Keys are stored in non-volatile memory along side other NVM objects with corresponding access protections. wolfHSM will automatically load keys into the necessary cryptographic hardware when the key is selected for use with a specific consumer. More information on the key management API can be found in the client library and API documentation sections.
+
 ## Cryptographic Operations
+
+One of the defining features of wolfHSM is that it enables the client application to use the wolfCrypt API directly, but with the underlying cryptographic operations actually being executed on the HSM core. This is an incredibly powerful feature for a number of reasons:
+
+- client applications are dramatically simpler as they do not need to set up the complicated communication transactions required to pass data back and forth between the HSM
+- local and remote HSM implementations can be easily switched between by changing a single parameter to the wolfCrypt call, enabling maximum flexibility of implementation and ease of development. Client applicaton development can be prototyped with local instances of wolfCrypt before the HSM core is even brought on-line
+- the wolfHSM API is simple, stable, well documented, and battle tested
+
+The ability to easily redirect wolfCrypt API calls to the wolfHSM server is based on the "crypto callback" (a.k.a cryptocb) of wolfCrypt. 
+
+
+The wolfHSM client is able to redirect wolfCrypt API calls to the wolfHSM server by implementing the remote procedure call logic as a [crypto callback](https://www.wolfssl.com/documentation/manuals/wolfssl/chapter06.html#crypto-callbacks-cryptocb). The Crypto callback framework in wolfCrypt enables users to override the default implementation of select cryptographic algorithms and provide their own custom implementations at runtime. The wolfHSM client library registers a crypto callback with wolfCrypt that transforms each wolfCrypt crypto API function into a remote procedure call to the HSM server to be executed in a secure environment.  Crypto callbacks are selected for use based on the device ID (devId) parameter accepted by most wolfCrypt API calls.
+
+wolfHSM defines the `WOLFHSM_DEV_ID` value to represent the wolfHSM server crypto device, which can be passed to any wolfCrypt function as the `devId` parameter. wolfCrypt APIs that support the `devId` parameter can be passed `WOLFHSM_DEV_ID` and, if supported, the cryptographic operation will be automatically exectued by the wolfHSM server.
+
+### Hardware Cryptography Support
+
+Many HSM devices also have hardware acceleration capabilities for select algorithms available. In these cases, the wolfHSM server may also support offloading the HSM server-side cryptography to device hardware. If supported, the wolfHSM server can be configured to do this automatically with no input required from the user. Any port-specific hardware acceleration capabilities will be documented in the wolfHSM port for that device.
+
 
 ## AUTOSAR SHE 
 
+TODO
