@@ -32,9 +32,9 @@ typedef int (*whServerCustomCb)(
 
 ```
 
-Custom server callback funcitons are associated with unique identifiers (IDs), which correspond to indices into the server's custom callback dispatch table. The client will refer to the callback by it's ID when it requests invocation.
+Custom server callback functions are associated with unique identifiers (IDs), which correspond to indices into the server's custom callback dispatch table. The client will refer to the callback by it's ID when it requests invocation.
 
-The custom callback has access to data passed from the client by value or by reference (useful in a shared memory system) through the `whMessageCustomCb_Request` argument passed into the callback function. The callback can act on the input data and produce output data that can be passed back to the client through th e`whMessageCustomCb_Response` argument. The custom callback does not need to handle sending or recieving any of the input / ouput client data, as this is handled externally by wolfHSM. The response structure also contains fields for an error code and return code to propagate back to the client. The error code should be populated by the callback, and the return code will be set the the return value from the custom callback.
+The custom callback has access to data passed from the client by value or by reference (useful in a shared memory system) through the `whMessageCustomCb_Request` argument passed into the callback function. The callback can act on the input data and produce output data that can be passed back to the client through th e`whMessageCustomCb_Response` argument. The custom callback does not need to handle sending or receiving any of the input / output client data, as this is handled externally by wolfHSM. The response structure also contains fields for an error code and return code to propagate back to the client. The error code should be populated by the callback, and the return code will be set the the return value from the custom callback.
 
 ### Client Side
 
@@ -45,8 +45,8 @@ The client can also check the registration status of a given callback ID using t
 ### Custom Messaging
 
 The client is able to pass data in and receive data from the custom callbacks through the custom request and response message data structures.
-These custom request and response messages are structured to include a unique ID, a type indicator, and a data payload.  The ID corresponds to the index in the server's callback table. The type field indicating to the custom callback how the data payload should be interpereted.
-The data payload is a fixed size data bufer that the client can use in any way it wishes. The response structure contains additional error code values described above.
+These custom request and response messages are structured to include a unique ID, a type indicator, and a data payload.  The ID corresponds to the index in the server's callback table. The type field indicating to the custom callback how the data payload should be interpreted.
+The data payload is a fixed size data buffer that the client can use in any way it wishes. The response structure contains additional error code values described above.
 
 ```c
 /* request message to the custom server callback */
@@ -68,7 +68,7 @@ typedef struct {
 
 ### Defining Custom Data Types
 
-Custom data types can be defined using the `whMessageCustomCb_Data` union, which provides several helpful predefined structures for common data types (e.g., dma32, dma64) and a raw data buffer (buffer) for user-defined schemas. Clients can indicate to the server callback how it should interperet the data in the union through the `type` field in the request. wolfHSM reserves the first few type indices for internal use, with the remainder of the type values available for custom client types.
+Custom data types can be defined using the `whMessageCustomCb_Data` union, which provides several helpful predefined structures for common data types (e.g., dma32, dma64) and a raw data buffer (buffer) for user-defined schemas. Clients can indicate to the server callback how it should interpret the data in the union through the `type` field in the request. wolfHSM reserves the first few type indices for internal use, with the remainder of the type values available for custom client types.
 
 
 ### Custom Callback Example

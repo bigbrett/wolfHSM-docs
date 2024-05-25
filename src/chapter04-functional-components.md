@@ -49,17 +49,17 @@ rc = wh_Component_CleanUp(comp_context);
 
 ## Communications
 
-The communication layer of wolfHSM is designed to provide reliable, bidirectional, and packet-based communication between clients and servers. This layer abstracts the underlying transport mechanisms, allowing for flexibility and modularity. A key aspect of wolfHSM communcation is split request and response functions for both client and server, enabling synchronous polling of message reception or asynchronous handling based on interrupt/event support.
+The communication layer of wolfHSM is designed to provide reliable, bidirectional, and packet-based communication between clients and servers. This layer abstracts the underlying transport mechanisms, allowing for flexibility and modularity. A key aspect of wolfHSM communication is split request and response functions for both client and server, enabling synchronous polling of message reception or asynchronous handling based on interrupt/event support.
 
 ### Key Components
 
 - Client/Server APIs: Main interface for communicating between client and server. These are the APIs that are directly used by user applications.
 - Comms layer: Defines the format and structure of messages exchanged between clients and servers, and provides an abstract interface to the underlying transport layer implementation, exposing a consistent interface for sending and receiving messages.
-- Transport Layer: Concrete implementations of the underlying transport. Defines how data is actualy transported between client and server.
+- Transport Layer: Concrete implementations of the underlying transport. Defines how data is actually transported between client and server.
 
 ### Client/Server APIs:
 
-High level client and server APIs (defined in [wh_client.h](wolfhsm/wh_client.h) and [wh_server.h](wolfhsm/wh_server.h)) are the primary interface for communication. These functions abstract the low level communciations details from the caller, providing a simple split transaction interface for logical operations.
+High level client and server APIs (defined in [wh_client.h](wolfhsm/wh_client.h) and [wh_server.h](wolfhsm/wh_server.h)) are the primary interface for communication. These functions abstract the low level communications details from the caller, providing a simple split transaction interface for logical operations.
 
 For example, using the client API to send an echo request to the server:
 
@@ -75,7 +75,7 @@ while (WH_ERROR_NOTREADY == wh_Client_EchoResponse(client, &recv_len, recv_buffe
 
 ### Comms Layer
 
-The comms layer encapsulates the messaging structure and control logic to send and rececive data from lower level transports. The comms layer is directly invoked by the higher level client and server APIs. The comms layer provides comm client and comm server abstractions that hold communication state and provide the abstract interface functions to interact with lower level transports. The comms layer API consists of send and receive functions for requests and responses, where the requests and responses pertain to messages rather than high level operations.
+The comms layer encapsulates the messaging structure and control logic to send and receive data from lower level transports. The comms layer is directly invoked by the higher level client and server APIs. The comms layer provides comm client and comm server abstractions that hold communication state and provide the abstract interface functions to interact with lower level transports. The comms layer API consists of send and receive functions for requests and responses, where the requests and responses pertain to messages rather than high level operations.
 
 Each client is only allowed a single outstanding request to the server at a time.
 The server will process a single request at a time to ensure client isolation.
@@ -178,7 +178,7 @@ Non-Volatile Memory (NVM) in the context of wolfHSM is used to manage persistent
 High level NVM features include:
 
 - API’s to associate metadata (ID, Label, Length, Access, Flags) with variable-sized data within accessible NVM
-- Always recoverable using 2 eraseable partitions with status flags
+- Always recoverable using 2 erasable partitions with status flags
 - Objects are added by using the next entry and programmed into free space
 - Duplicated id’s are allowed but only the latest is readable
 - Objects are destroyed by copying the entire space to the inactive partition without the listed objects
@@ -223,7 +223,7 @@ Steps required to initialize NVM on the server are:
 3. Allocate a `whServerContext` structure.
 4. Initialize the server with the `whServerConfig` structure by calling `wh_Server_Init()`.
 
-This allows the server to use the configured NVM operations on the given backing store, which can be easily swapped out by providing a different impelementation in the `whNvmConfig` structure.
+This allows the server to use the configured NVM operations on the given backing store, which can be easily swapped out by providing a different implementation in the `whNvmConfig` structure.
 
 ### NVM Back-Ends
 
@@ -238,7 +238,7 @@ The wolfHSM library provides comprehensive key management capabilities, includin
 One of the defining features of wolfHSM is that it enables the client application to use the wolfCrypt API directly, but with the underlying cryptographic operations actually being executed on the HSM core. This is an incredibly powerful feature for a number of reasons:
 
 - client applications are dramatically simpler as they do not need to set up the complicated communication transactions required to pass data back and forth between the HSM
-- local and remote HSM implementations can be easily switched between by changing a single parameter to the wolfCrypt call, enabling maximum flexibility of implementation and ease of development. Client applicaton development can be prototyped with local instances of wolfCrypt before the HSM core is even brought on-line
+- local and remote HSM implementations can be easily switched between by changing a single parameter to the wolfCrypt call, enabling maximum flexibility of implementation and ease of development. Client application development can be prototyped with local instances of wolfCrypt before the HSM core is even brought on-line
 - the wolfHSM API is simple, stable, well documented, and battle tested
 
 The ability to easily redirect wolfCrypt API calls to the wolfHSM server is based on the "crypto callback" (a.k.a cryptocb) of wolfCrypt. 
