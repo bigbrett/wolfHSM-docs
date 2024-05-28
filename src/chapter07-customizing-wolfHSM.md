@@ -1,18 +1,215 @@
 # Customizing wolfHSM
 
-wolfHSM provides multiple points of customization 
+wolfHSM provides multiple points of customization via build time options and user-supplied callbacks, enabling it to to be tailored to a wide range of use cases and environments without requiring changes to the core library code. This chapter provides an overview of the customization options available in wolfHSM, including:
 
-### Library Configuration
+- [Library Configuration](#library-configuration): Compile-time options that can be used to enable or disable specific features in the library.
+- [DMA Callbacks](#dma-callbacks): Custom callbacks that can be registered with the server to perform operations before and after accessing client memory directly.
+- [DMA Address Allow List](#dma-address-allow-list): A mechanism for the server to restrict the client's access to specific memory regions.
+- [Custom Callbacks](#custom-callbacks): Custom callbacks that can be registered with the server and invoked by the client to perform specific operations that are not covered by the default HSM capabilities.
+
+## Library Configuration
 
 The wolfHSM library has a number of build options that can be turned on or off though compile time definitions. The library expects these configuration macros to be defined in a configuration header named `wh_config.h`. This file should be defined by applications using wolfHSM and located in a directory in the compilers include path.
 
 An example `wh_config.h` is distributed with every wolfHSM port providing a known good configuration.
 
-For a full list of wolfHSM configuration settings that can be defined in `wh_config.h`, refer to the [API documentation]().
+For a full list of wolfHSM configuration settings that can be defined in `wh_config.h`, refer to the [API documentation](appendix01-api-reference.md).
 
-### DMA Callbacks
+## DMA Callbacks
 
-### Custom Callbacks
+The Direct Memory Access (DMA) callback feature in wolfHSM provides hooks on the server side for custom operations before and after accessing client memory directly. This is often required when porting to a new shared memory architecture. The feature is particularly useful for scenarios where the server needs to perform specific actions such as cache invalidation, address translation, or other custom memory manipulations to ensure coherency between client and server memory.
+
+Callbacks can be registered with a server using the `wh_Server_DmaRegisterCb32()` and `wh_Server_DmaRegisterCb64()` functions, which bind the supplied callback to all DMA operations on the server context.
+
+Separate callback functions for handling 32 and 64-bit addresses are required, corresponding to the distinct 32 and 64-bit client DMA API functions. Callback functions are of type `whServerDmaClientMem32Cb` and `whServerDmaClientMem64Cb`, respectively, defined as:
+
+```c
+typedef int (*whServerDmaClientMem32Cb)(struct whServerContext_t* server,
+                                        uint32_t clientAddr, void** serverPtr,
+                                        uint32_t len, whServerDmaOper oper,
+                                        whServerDmaFlags flags);
+typedef int (*whServerDmaClientMem64Cb)(struct whServerContext_t* server,
+                                        uint64_t clientAddr, void** serverPtr,
+                                        uint64_t len, whServerDmaOper oper,
+                                        whServerDmaFlags flags);
+```
+
+The DMA callback functions receive the following arguments:
+
+- `server`: A pointer to the server context.
+- `clientAddr`: The client memory address to be accessed.
+- `serverPtr`: A pointer to a the server memory address (also a pointer), which the callback will set after applying any necessary transformations/remappings
+- `len`: The length of the requested memory operation in bytes
+- `oper`: The type of memory operation (injection point in the next section) that is about to be performed on the transformed server address
+- `flags`: Additional flags for the memory operation. Right now these are reserved for future use and should be ignored.
+
+The callback should return `WH_ERROR_OK` on success, or an error code if an error occurs. The server will propagate the error code back to the client if the callback fails.
+
+### Callback Locations
+
+The DMA callbacks are at four distinct points around the server's memory access:
+
+- Pre-Read: Callback is invoked before reading data from the client memory. The server should use the callback to perform any necessary pre-read operations, such as address translation or cache invalidation.
+- Post-Read: Callback is invoked after reading data from the client memory. The server should use the callback to perform any necessary post-read operations, such as cache synchronization.
+- Pre-Write: Callback is invoked before writing data to the client memory. The server should use the callback to perform any necessary pre-write operations, such as address translation or cache invalidation.
+- Post-write: Callback is invoked after writing data to the client memory. The server should use the callback to perform any necessary post-write operations, such as cache synchronization.
+
+The point at which the callback is invoked is passed into the callback through the `oper` argument, which can take the following values:
+
+```c
+typedef enum {
+    WH_SERVER_DMA_OPER_PRE_READ,  /* Pre-read operation */
+    WH_SERVER_DMA_OPER_POST_READ, /* Post-read operation */
+    WH_SERVER_DMA_OPER_PRE_WRITE, /* Pre-write operation */
+    WH_SERVER_DMA_OPER_POST_WRITE /* Post-write operation */
+} whServerDmaOper;
+```
+
+This enables the callback to `switch` on the `oper` value and perform custom logic based on the type of memory operation being performed. An example DMA callback implementation is shown below:
+
+```c
+#include "wolfhsm/wh_server.h"
+#include "wolfhsm/wh_error.h"
+
+/* Example DMA callback for 32-bit client addresses */
+int myDmaCallback32(whServerContext* server, uint32_t clientAddr, 
+                    void** xformedCliAddr, uint32_t len, 
+                    whServerDmaOper oper, whServerDmaFlags flags)
+{
+    /* Optionally transform client address to server address space, e.g. memmap() */
+    *xformedCliAddr = (void*)clientAddr; /* do transformation */
+
+    switch (oper) {
+        case WH_DMA_OPER_CLIENT_READ_PRE:
+            /* Pre-Read Operation here, e.g. cache invalidation */
+            break;
+        case WH_DMA_OPER_CLIENT_READ_POST:
+            /* Post-Read Operation here */
+            break;
+        case WH_DMA_OPER_CLIENT_WRITE_PRE:
+            /* Pre-Write Operation here */
+            break;
+        case WH_DMA_OPER_CLIENT_WRITE_POST:
+            /* Post-Write Operation here, e.g. cache flush */
+            break;
+        default:
+            return WH_ERROR_BADARGS;
+    }
+
+    return WH_ERROR_OK;
+}
+```
+
+### Callback Registration
+
+The callback can be registered with the server context, either at initialization through the server configuration structure, or at any time after initialization using the callback registration functions.
+
+To register the callback at initialization, the callback function should be included in the DMA configuration structure within the server configuration structure. Note that the callback functions are optional, so unused callbacks can be set to `NULL`.
+
+```c
+#include "wolfhsm/wh_server.h"
+
+/* Example of initializing a server config structr with a DMA32 callback then initializing the server */
+int main(void) 
+{
+    whServerDmaConfig dmaCfg = {0};
+    dmaCfg.dma32Cb = myDmaCallback32;
+
+
+    whServerConfig serverCfg = {
+        .dmaCfg = dmaCfg,
+
+        /* other configuration omitted for brevity */
+    };
+
+    whServerContext serverCtx;
+
+    wh_Server_Init(&serverCtx, &serverCfg);
+     
+    /* server app logic */
+}
+```
+
+To register the callback after initialization, first initialize the server context with the desired configuration, then call the appropriate registration function.
+
+```c
+#include "wolfhsm/wh_server.h"
+
+int main(void) 
+{
+
+    whServerConfig serverCfg =  { /* server config */ };
+
+    whServerContext serverCtx;
+
+    wh_Server_Init(&serverCtx, &serverCfg);
+
+    /* register the callback defined above */
+    wh_Server_DmaRegisterCb32(&serverCtx, myDmaCallback32);
+
+    /* server app logic */
+}
+```
+
+## DMA Address Allow List
+
+wolfHSM also exposes an "allow list" for client DMA addresses, providing a mechanism for the server to restrict the client's access to a pre-configured list of specific memory regions. This feature is particularly useful in scenarios where the server needs to limit the client's access to certain memory regions to prevent unauthorized access or to ensure that the client only accesses memory that is safe to access. For example, in a multicore system with one client running per-core, it is most likely that clients should not be able to access each others memory regions, nor read out server memory which could contain sensitive information like cryptographic keys. 
+
+It is important to note that the software allow list feature is meant to work as a second layer of protection on top of device-specific memory protection mechanisms, and should not be considered a first line of defense in preventing unauthorized memory accesses. It is imperative that the user configure the device-specific memory protection mechanisms required to enforce the isolation of their applications and segment the HSM core and associated memory from the rest of the system.
+
+### Registering an Allow List
+
+Similar to the DMA callbacks, the allow list can be registered with the server context, either at initialization through the server configuration structure, or at any time after initialization using the allow list registration functions.
+
+To register the list at initialization, the list should be populated in the DMA configuration structure inside the server configuration structure.
+
+```c
+#include "wolfhsm/wh_server.h"
+#include "wolfhsm/wh_error.h"
+
+/* Define the allowed memory regions */
+const whServerDmaAddrAllowList allowList = {
+    .readList = {
+        {(void*)0x20001000, 0x100},  /* Allow read from 0x20001000 to 0x200010FF */
+        {(void*)0x20002000, 0x200},  /* Allow read from 0x20002000 to 0x200021FF */
+    },
+    .writeList = {
+        {(void*)0x20003000, 0x100},  /* Allow write from 0x20003000 to 0x200030FF */
+        {(void*)0x20004000, 0x200},  /* Allow write from 0x20004000 to 0x200041FF */
+    },
+};
+
+int main() 
+{
+    whServerConfig config;
+
+
+    whServerDmaConfig dmaCfg = {0};
+    dmaCfg.allowList = &allowList;
+
+    whServerConfig serverCfg = {
+        .dmaCfg = dmaCfg,
+        /* other configuration omitted for brevity */
+    };
+
+    whServerContext server;
+
+    wh_Server_Init(&server, &config);
+
+    /* Server is now configured with the allowlist */
+    /* Perform other server operations */
+
+    /* Allow list can also be registered after initialization if the 
+     * list is not present in the server configuration struct using:
+     * 
+     *    wh_Server_DmaRegisterAllowList(&server, &allowList);
+     */
+}
+```
+
+Once registered, all DMA operations requested of the server by the client will be checked against the allow list. If the client attempts to access a memory region that is not in the allow list, the server will return an error to the client, and the operation will not be performed.
+
+## Custom Callbacks
 
 The custom callback feature in wolfHSM allows developers to extend the functionality of the library by registering custom callback functions on the server. These callbacks can then be invoked by clients to perform specific operations that are not covered by the default HSM capabilities such as enabling or disabling peripheral hardware, implementing custom monitoring or authentication routines, staging secure boot for an additional core, etc.
 
@@ -20,7 +217,7 @@ The custom callback feature in wolfHSM allows developers to extend the functiona
 
 The server can register custom callback functions that define specific operations. These functions must be of type `whServerCustomCb`.
 
-```
+```c
 /* wh_server.h */
 
 /* Type definition for a custom server callback  */

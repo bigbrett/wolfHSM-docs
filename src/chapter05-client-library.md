@@ -1,6 +1,17 @@
 # wolfHSM Client Library
 
-The client library API is the primary mechanism through which users will interact with wolfHSM. The full client API documentation can be found in (chapter x)[todo].
+The client library API is the primary mechanism through which users will interact with wolfHSM. Refer to the [API documentation](appendix01-api-reference.md) for a full list of available functions and their descriptions.
+
+## Table of Contents
+
+- [API Return Codes](#api-return-codes)
+- [Split Transaction Processing](#split-transaction-processing)
+- [The Client Context](#the-client-context)
+  - [Initializing the client context](#initializing-the-client-context)
+- [NVM Operations](#nvm-operations)
+- [Key Management](#key-management)
+- [Cryptography](#cryptography)
+- [AUTOSAR SHE API](#autosar-she-api)
 
 
 ## API Return Codes

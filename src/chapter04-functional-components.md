@@ -1,5 +1,23 @@
 # Library Design / wolfHSM Internals
 
+wolfHSM is a modular and extensible library designed to provide a secure and efficient hardware security module (HSM) API for embedded systems. The library is built around a set of functional components that can be easily configured and combined to meet the specific requirements of a given application. This chapter provides an overview of the key functional components of wolfHSM, including the component architecture, communications layer, non-volatile memory (NVM), key management, cryptographic operations, and hardware security module (HSM) support.
+
+## Table of Contents:
+
+- [Generic Component Architecture](#generic-component-architecture)
+- [Communications](#communications)
+  - [Key Components](#key-components)
+    - [Client/Server APIs](#clientserver-apis)
+    - [Comms Layer](#comms-layer)
+- [Non Volatile Memory](#non-volatile-memory)
+  - [NVM Metadata](#nvm-metadata)
+  - [NVM Architecture](#nvm-architecture)
+  - [NVM Back-Ends](#nvm-back-ends)
+- [Key Management](#key-management)
+- [Cryptographic Operations](#cryptographic-operations)
+  - [Hardware Cryptography Support](#hardware-cryptography-support)
+
+
 ## Generic Component Architecture
 
 To support easily porting wolfHSM to different hardware platforms and build
