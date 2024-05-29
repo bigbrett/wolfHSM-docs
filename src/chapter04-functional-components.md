@@ -119,7 +119,7 @@ Messages are used to encapsulate the request data necessary for the server to
 execute the desired function and for the response to provide the results of the
 function execution back to the client.  Message types are grouped based on the
 component that is performing the function and uniquely identify which of the
-enumerated functions is being performed.  To ensure compatibility (endianness,
+enumerated functions is being performed.  To ensure compatibility (endianness
 and version), messages include a Magic field which has known values used to
 indicate what operations are necessary to demarshall data passed within the
 payload for native processing.  Each functional component has a "remote"
