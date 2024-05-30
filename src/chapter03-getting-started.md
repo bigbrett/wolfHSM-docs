@@ -112,9 +112,9 @@ Note that the echo request in step 6 is just a simple usage example. Once the co
 
 *Note: A wolfHSM port comes with a reference server application that is already configured to run on the HSM core and so manual server configuration is not required.*
 
-Configuring a wolfHSM server involves allocating a server context structure and initializing it with a valid client configuration that enables it to perform the requested operations. These operations usually include client communication, cryptographic operations, and managing keys and non-volatile object storage. Not all of these components of the configuration need to be initialized, depending on the required functionality.
+Configuring a wolfHSM server involves allocating a server context structure and initializing it with a valid client configuration that enables it to perform the requested operations. These operations usually include client communication, cryptographic operations, managing keys, and non-volatile object storage. Depending on the required functionality, not all of these configuration components need to be initialized.
 
-Steps required to configure a server that supports client communication, NVM object storage using the NVM flash configuration, and local crypto (software only) are:
+The steps required to configure a server that supports client communication, NVM object storage using the NVM flash configuration, and local crypto (software only) are:
 
 1. Initialize the server comms configuration
     1. Allocate and initialize a transport configuration structure, context, and callback implementation for the desired transport
