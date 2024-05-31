@@ -105,7 +105,7 @@ the sequence id, and type of a request or response.  The header also provides
 additional fields to provide auxiliary flags or session information.
 
 ```c
-/* wolfhsm/wh_message.h */
+/* wolfhsm/wh_comm.h */
 
 typedef struct {
     uint16_t magic;
@@ -168,7 +168,7 @@ client/server should Cleanup any context as a result.
 
 Transports provide intact packets (byte sequences) of variable size (up to a
 maximum MTU), to the messaging layer for the library to process as a request or 
-response. Transports implement the abstract interface defined by `whTransportCb`
+response. Transports implement the abstract interface defined by `whTransportClientCb`
 and are invoked directly by the commClient/commServer when needing to send and
 receive data.
 
@@ -176,9 +176,7 @@ Custom transport modules that implement the `whTransportClientCb` interface
 can be registered with the server and client and then are automatically used
 via the standard server and client request/response functions.
 
-```c
- /* Example transport module */
-```
+Examples of a memory buffer transport module and a POSIX TCP socket transport can be found in wolfHSM's supported transports.  
 
 #### Supported Transports
 
@@ -218,9 +216,9 @@ typedef struct {
 } whNvmMetadata;
 ```
 
-- ID (whNvmId id): A unique identifier for the NVM object.This ID is used to reference and access the specific object within the NVM. It allows for operations like reading, writing, and deleting the object.
+- ID (`whNvmId id`): A unique identifier for the NVM object. This ID is used to reference and access the specific object within the NVM. It allows for operations like reading, writing, and deleting the object.
 - Access (`whNvmAccess access`): Defines the access permissions for the object. This field specifies who can access the object and under what conditions. It helps enforce security policies and ensures that only authorized entities can interact with the object.
-- Flags (`whNvmFlags flags`) Additional flags that provide extra information or modify the behavior of the object.  Flags can be used to mark objects with special attributes or states, such as whether the object is read-only, temporary, or has other specific properties.
+- Flags (`whNvmFlags flags`): Additional flags that provide extra information or modify the behavior of the object.  Flags can be used to mark objects with special attributes or states, such as whether the object is read-only, temporary, or has other specific properties.
 Length (whNvmSize len): The length of the data associated with the object, in bytes.
 - Label (`uint8_t label[]`): A human-readable label or name for the object.
 
@@ -249,7 +247,7 @@ Currently, wolfHSM only supports one NVM back-end provider: the NVM flash module
 
 ## Key Management
 
-The wolfHSM library provides comprehensive key management capabilities, including storing, loading, and exporting keys from non-volatile memory, caching of frequently used keys in RAM for fast access, and interacting with hardware-exclusive device keys. Keys are stored in non-volatile memory along side other NVM objects with corresponding access protections. wolfHSM will automatically load keys into the necessary cryptographic hardware when the key is selected for use with a specific consumer. More information on the key management API can be found in the client library and API documentation sections.
+The wolfHSM library provides comprehensive key management capabilities, including storing, loading, and exporting keys from non-volatile memory, caching of frequently used keys in RAM for fast access, and interacting with hardware-exclusive device keys. Keys are stored in non-volatile memory along side other NVM objects with corresponding access protections. wolfHSM will automatically load keys into the necessary cryptographic hardware when the key is selected for use with a specific consumer. More information on the key management API can be found in the [client library](./chapter05-client-library.md) and [API documentation](./appendix01-api-reference.md) sections.
 
 ## Cryptographic Operations
 
@@ -262,7 +260,7 @@ One of the defining features of wolfHSM is that it enables the client applicatio
 The ability to easily redirect wolfCrypt API calls to the wolfHSM server is based on the "crypto callback" (a.k.a cryptocb) of wolfCrypt. 
 
 
-The wolfHSM client is able to redirect wolfCrypt API calls to the wolfHSM server by implementing the remote procedure call logic as a [crypto callback](https://www.wolfssl.com/documentation/manuals/wolfssl/chapter06.html#crypto-callbacks-cryptocb). The Crypto callback framework in wolfCrypt enables users to override the default implementation of select cryptographic algorithms and provide their own custom implementations at runtime. The wolfHSM client library registers a crypto callback with wolfCrypt that transforms each wolfCrypt crypto API function into a remote procedure call to the HSM server to be executed in a secure environment.  Crypto callbacks are selected for use based on the device ID (devId) parameter accepted by most wolfCrypt API calls.
+The wolfHSM client is able to redirect wolfCrypt API calls to the wolfHSM server by implementing the remote procedure call logic as a [crypto callback](https://www.wolfssl.com/documentation/manuals/wolfssl/chapter06.html#crypto-callbacks-cryptocb). The Crypto callback framework in wolfCrypt enables users to override the default implementation of select cryptographic algorithms and provide their own custom implementations at runtime. The wolfHSM client library registers a crypto callback with wolfCrypt that transforms each wolfCrypt crypto API function into a remote procedure call to the HSM server to be executed in a secure environment.  Crypto callbacks are selected for use based on the device ID (`devId`) parameter accepted by most wolfCrypt API calls.
 
 wolfHSM defines the `WOLFHSM_DEV_ID` value to represent the wolfHSM server crypto device, which can be passed to any wolfCrypt function as the `devId` parameter. wolfCrypt APIs that support the `devId` parameter can be passed `WOLFHSM_DEV_ID` and, if supported, the cryptographic operation will be automatically exectued by the wolfHSM server.
 
