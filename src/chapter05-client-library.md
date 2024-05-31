@@ -252,7 +252,34 @@ For a full description of all the NVM API functions, please refer to the [API do
 
 ## Key Management
 
+Keys meant for use with wolfCrypt can be loaded into the HSM's keystore and optionally saved to NVM with the following APIs:
 
+```c
+#include "wolfhsm/wh_client.h"
+
+uint16_t keyId = WOLFHSM_KEYID_ERASED;
+uint32_t keyLen;
+byte key[AES_128_KEY_SIZE] = { /* AES key */ };
+byte label[WOLFHSM_NVM_LABEL_LEN] = { /* Key label */ };
+
+whClientContext clientCtx;
+whClientCfg clientCfg = { /* config */ };
+
+wh_Client_Init(&clientCtx, &clientCfg);
+
+wh_Client_KeyCache(clientCtx, 0, label, sizeof(label), key, sizeof(key), &keyId);
+wh_Client_KeyCommit(clientCtx, keyId);
+wh_Client_KeyEvict(clientCtx, keyId);
+keyLen = sizeof(key);
+wh_Client_KeyExport(clientCtx, keyId, label, sizeof(label), key, &keyLen);
+wh_Client_KeyErase(clientCtx, keyId);
+```
+
+`wh_Client_KeyCache` will store the key and label in the HSM's ram cache and correlate it with the `keyId` passed in. Using a `keyId` of `WOLFHSM_KEYID_ERASED` will make wolfHSM assign a new, unique `keyId` that will be returned through the keyId parameter. wolfHSM has a limited number of cache slots, configured by `WOLFHSM_NUM_RAMKEYS`, and will return `WH_ERROR_NOSPACE` if all keyslots are full. Keys that are in cache and NVM will be removed from the cache to make room for more keys since they're backed up in NVM.
+`wh_Client_KeyCommit` will save a cached key to NVM with the key indicated by it's keyId.
+`wh_Client_KeyEvict` will evict a key from the cache but will leave it in NVM if it's been commited.
+`wh_Client_KeyExport` will read the key contents out of the HSM back to the client.
+`wh_Client_KeyErase` will remove the indicated key from cache and erase it from NVM.
 
 ## Cryptography
 
@@ -287,11 +314,51 @@ wc_AesCbcEncrypt(&aes, &cipherText, &plainText, sizeof(plainText));
 wc_AesFree(&aes);
 ```
 
+If it is necessary to use an HSM owned key instead of a client owned key, functions such as `wh_Client_SetKeyAes` (with a different ABI function used for each type of wolfCrypt struct) will make wolfHSM use the indicated HSM side key instead of a client supplied one:
+
+```c
+#include "wolfhsm/client.h"
+#include "wolfssl/wolfcrypt/aes.h"
+
+whClientContext clientCtx;
+whClientCfg clientCfg = { /* config */ };
+
+wh_Client_Init(&clientCtx, &clientCfg);
+
+uint16_t keyId;
+Aes aes;
+byte key[AES_128_KEY_SIZE] = { /* AES key */ };
+byte label[WOLFHSM_NVM_LABEL_LEN] = { /* Key label */ };
+byte iv[AES_BLOCK_SIZE] = { /* AES IV */ };
+
+byte plainText[AES_BLOCK_SIZE] = { /* plaintext */ };
+byte cipherText[AES_BLOCK_SIZE];
+
+wc_AesInit(&aes, NULL, WOLFHSM_DEV_ID);
+
+/* IV needs to be set seperate from the key */
+wc_AesSetIV(&aes, iv);
+
+/* this key can be cached at any time before use, done here for the sake of example */
+wh_Client_KeyCache(clientCtx, 0, label, sizeof(label), key, sizeof(key), &keyId);
+
+wh_Client_SetKeyAes(&aes, keyId);
+
+wc_AesCbcEncrypt(&aes, &cipherText, &plainText, sizeof(plainText));
+
+/* key eviction is optional, the key can be stored in cache or NVM and used with wolfCrypt */
+wh_Client_KeyEvict(clientCtx, keyId);
+
+wc_AesFree(&aes);
+```
+
 If it was desired to run the crypto locally on the client, all that is necessary is to pass `INVALID_DEVID` to `wc_AesInit()`:
 
 ```c
 wc_AesInit(&aes, NULL, INVALID_DEVID);
 ```
+
+For CMAC operations, due to a conflict with the existing cryptoCb system, seperate wolfHSM specific functions must be called to do the CMAC hash and verify operation in one function call with a pre cached. The normal `wc_AesCmacGenerate_ex` and `wc_AesCmacVerify_ex` will run fine through the HSM if the client supplies a key when they are called but in order to use a pre cached key, `wh_Client_AesCmacGenerate` and `wh_Client_AesCmacVerify` must be used, but have similar arguments to the wolfCrypt functions. The non-oneshot functions `wc_InitCmac_ex`, `wc_CmacUpdate` and `wc_CmacFinal` can be used with either a client side key or a pre cached key, just pass NULL in for the key and call `wh_Client_SetKeyCmac` to set the keyId.
 
 Outside of the steps mentioned above, the usage of the wolfHSM API should be otherwise unchanged. Please consult the wolfCrypt API reference inside the [wolfSSL manual](https://www.wolfssl.com/documentation/manuals/wolfssl/index.html) for further usage instructions and the extensive list of supported cryptographic algorithms.
 
