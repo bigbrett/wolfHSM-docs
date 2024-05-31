@@ -271,4 +271,6 @@ Many HSM devices also have hardware acceleration capabilities for select algorit
 
 ## AUTOSAR SHE 
 
-TODO
+**AUT**omotive **O**pen **S**ystem **AR**chitecture (**AUTOSAR**) is a group of companies in the automotive and software industry that sets a standardized way for automotive industry components to interface with each other. The AUTOSAR crypto stack consists of the Crypto Service Manager, Crypto Interface, and Crypto Driver, with the Crypto Service Manager having the highest level of abstraction and the Crypto Driver having the lowest. The driver can be implemented in software or hardware or reside in an Automotive HSM.
+
+The wolfCrypt cryptography library has been present in Crypto drivers for years, matching the AUTOSAR requirements with an asynchronous, abstracted, and layered design. wolfHSM ports the wolfCrypt API to popular Automotive HSMs such as the Aurix Tricore T3XX, providing better visibility into the Crypto driver API and allowing the user to verify that their HSM code meets quality requirements. The structure also allows for extensibility of cryptographic algorithms.
