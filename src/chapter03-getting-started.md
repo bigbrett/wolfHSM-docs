@@ -41,12 +41,12 @@ whTransportClientCb transportMemClientCb = {WH_TRANSPORT_MEM_CLIENT_CB};
 
 /* Step 2: Allocate client comm configuration and bind to the transport */
 /* Configure the client comms to use the selected transport configuration */
-whCommClientConfig commClientCfg = {{
+whCommClientConfig commClientCfg = {
              .transport_cb      = transportMemClientCb,
              .transport_context = (void*)transportMemClientCtx,
              .transport_config  = (void*)transportMemCfg,
              .client_id         = 123, /* unique client identifier */
-}};
+};
 
 /* Step 3: Allocate and initialize the client configuration */
 whClientConfig clientCfg= {
@@ -96,12 +96,12 @@ posixTransportTcpConfig posixTransportTcpCfg = {
 
 /* Step 2: Allocate client comm configuration and bind to the transport */
 /* Configure the client comms to use the selected transport configuration */
-whCommClientConfig commClientCfg = {{
+whCommClientConfig commClientCfg = {
              .transport_cb      = posixTransportTcpCb,
              .transport_context = (void*)posixTransportTcpCtx,
              .transport_config  = (void*)posixTransportTcpCfg,
              .client_id         = 123, /* unique client identifier */
-}};
+};
 
 /* Subsequent steps remain the same... */
 ```
@@ -122,8 +122,8 @@ The steps required to configure a server that supports client communication, NVM
     1. Allocate and initialize a transport configuration structure, context, and callback implementation for the desired transport
     2. Allocate and initialize a comm server configuration structure using the transport configuration from step 1.1
 2. Initialize the server NVM context
-    1. Allocate and initialize a config, context, and callback structure for the NVM flash storage drivers (the implementation of these structures is provided by the port)
-    2. Allocate and initialize an NVM config structure using the NVM flash configuration from step 2.1
+    1. Allocate and initialize a config, context, and callback structure for the low-level flash storage drivers (the implementation of these structures is provided by the port)
+    2. Allocate and initialize an NVM flash config, context, and callback strucure and bind the port flash configuration from step 2.1 to them
     3. Allocate an NVM context structure and initialize it with the configuration from step 2.2 using `wh_Nvm_Init()`
 3.  Allocate and initialize a crypto context structure for the server
 4. Initialize wolfCrypt (before initializing the server)
@@ -153,60 +153,59 @@ whTransportServerCb transportMemServerCb = {WH_TRANSPORT_MEM_SERVER_CB};
 /* Step 1.2: Allocate a comm server configuration structure and bind to the
  * transport */
 /* Configure the server comms to use the selected transport configuration*/
-whCommServerConfig commServerCfg = {{
+whCommServerConfig commServerCfg = {
         .transport_cb       = transportMemServerCb,
         .transport_context  = (void*)transportMemServerCtx,
         .transport_config   = (void*)transportMemCfg,
         .server_id          = 456, /* unique server identifier */
-}};
+};
 
 /* Initialize the server NVM context */
-/* Step 2.1: Allocate and initialize NVM structure for NVM flash storage drivers*/
-/* NVM Flash context */
-whFlashCtx fctx = {0}
 
-/* NVM Flash config */
-whFlashConfig fc_cfg = {{
-    .size       = /* Flash size (MB) */,
-    .sectorSize = /* Sector size (KB)*/,
-    .pageSize   = /* Page size (B)*/,
-    .erasedByte = (~(uint8_t)0),
-}};
+/* Step 2.1: Allocate and initialize context and config for port-specific
+ * flash storage drivers */
 
-/* NVM Flash callback structure */
-whFlashCb fcb = {0};
+/* Port Flash context (structure names are port-specific)  */
+MyPortFlashContext portFlashCtx = {0}
 
-/* Step 2.2: Allocate and initialize NVM config structure using NVM flash
+/* Port Flash config */
+MyPortFlashConfig portFlashCfg = { /* port specific configuration */ };
+
+/* NVM Flash callback implementation for Port Flash */
+whFlashCb portFlashCb = { /* port flash implementation of NVM Flash callbacks */
+
+/* Step 2.2: Allocate and initialize NVM flash config structure and bind to port
  * configuration from step 2.1 */
-whNVMFlashConfig nf_conf = {{
-    .cb         = fcb,
-    .context    = fctx,
-    .config     = fc_cfg,
-}}; 
+whNvmFlashConfig nvmFlashCfg = {
+    .cb         = portFlashCb,
+    .context    = portFlashCtx,
+    .config     = portFlashCfg,
+};
 whNvmFlashContext nfc = {0};
-whNvmCb nfcb = {WH_NVM_FLASH_CB};
-whNvmConfig n_conf = {{
-    .cb      = nfcb;
+
+/* Step 2.3: Allocate NVM context, config, and callback structure and initialize
+ * with NVM flash configuration from step 2.2 */
+whNvmCb nvmFlashCb = {WH_NVM_FLASH_CB};
+
+whNvmConfig nvmConf = {
+    .cb      = nvmFlashCb;
     .context = nfc;
-    .config  = nf_conf,
-}};
+    .config  = nvmFlashCfg,
+};
+whNvmContext nvmCtx = {0};
 
-whNvmContext nvm = {{0}};
-
-/* Step 2.3: Allocate NVM context structure and initialize with configuration
- * from step 2.2 */
-wh_Nvm_Init(&nvm, &whNvmConfig);
+wh_Nvm_Init(&nvmCtx, &whNvmConfig);
 
 /* Step 3: Allocate and initialize a crypto context structure */
-crypto_context crypto {{
-    .devID = INVALID_DEVID; /* set to your devID for custom crypto callback */
-}};
+crypto_context cryptoCtx {
+    .devID = INVALID_DEVID; /* or set to custom crypto callback devID */
+};
 
 /* Allocate and initialize the Server configuration*/
 whServerConfig serverCfg = {
         .comm   = commServerCfg,
-        .nvm    = nvm,
-        .crypto = crypto,
+        .nvm    = nvmCtx,
+        .crypto = cryptoCtx,
 };
 
 /* Step 4: Initialize wolfCrypt*/
@@ -217,10 +216,13 @@ wolfCrypt_Init();
 whServerContext server = {0};
 wh_Server_Init(&server, &serverCfg);
 
-/* Set server connection state to connected */
+/* Set server connection state to connected when transport is ready (e.g.
+ * shared memory buffers cleared) */
 wh_Server_SetConnected(&server, WH_COMM_CONNECTED);
 
 /* Process client requests*/
-wh_Server_HandleRequestMessage(&server);
+while (1) {
+    wh_Server_HandleRequestMessage(&server);
+}
 ```
 
