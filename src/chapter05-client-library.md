@@ -314,7 +314,7 @@ wc_AesCbcEncrypt(&aes, &cipherText, &plainText, sizeof(plainText));
 wc_AesFree(&aes);
 ```
 
-If it is necessary to use an HSM owned key instead of a client owned key, functions such as `wh_Client_SetKeyAes` (with a different ABI function used for each type of wolfCrypt struct) will make wolfHSM use the indicated HSM side key instead of a client supplied one:
+If it is necessary to use an HSM-owned key instead of a client-owned key (e.g. a HSM hardware key), client API functions such as `wh_Client_SetKeyAes` (or similar for other crypto algorithms) will make wolfHSM use the indicated HSM key for the subsequent cryptographic operation instead of requiring a client-supplied key:
 
 ```c
 #include "wolfhsm/client.h"
@@ -352,15 +352,18 @@ wh_Client_KeyEvict(clientCtx, keyId);
 wc_AesFree(&aes);
 ```
 
-If it was desired to run the crypto locally on the client, all that is necessary is to pass `INVALID_DEVID` to `wc_AesInit()`:
+If it is desired to run the crypto locally on the client, all that is necessary is to pass `INVALID_DEVID` to `wc_AesInit()`:
 
 ```c
 wc_AesInit(&aes, NULL, INVALID_DEVID);
 ```
 
-For CMAC operations, due to a conflict with the existing cryptoCb system, seperate wolfHSM specific functions must be called to do the CMAC hash and verify operation in one function call with a pre cached. The normal `wc_AesCmacGenerate_ex` and `wc_AesCmacVerify_ex` will run fine through the HSM if the client supplies a key when they are called but in order to use a pre cached key, `wh_Client_AesCmacGenerate` and `wh_Client_AesCmacVerify` must be used, but have similar arguments to the wolfCrypt functions. The non-oneshot functions `wc_InitCmac_ex`, `wc_CmacUpdate` and `wc_CmacFinal` can be used with either a client side key or a pre cached key, just pass NULL in for the key and call `wh_Client_SetKeyCmac` to set the keyId.
-
 Outside of the steps mentioned above, the usage of the wolfHSM API should be otherwise unchanged. Please consult the wolfCrypt API reference inside the [wolfSSL manual](https://www.wolfssl.com/documentation/manuals/wolfssl/index.html) for further usage instructions and the extensive list of supported cryptographic algorithms.
+
+### CMAC
+
+For CMAC operations that need to use cached keys, seperate wolfHSM specific functions must be called to do the CMAC hash and verify operation in one function call. The normal `wc_AesCmacGenerate_ex` and `wc_AesCmacVerify_ex` are acceptable to use if the client can supply a key when the functions are invoked, but in order to use a pre-cached key, `wh_Client_AesCmacGenerate` and `wh_Client_AesCmacVerify` must be used. The non-oneshot functions `wc_InitCmac_ex`, `wc_CmacUpdate` and `wc_CmacFinal` can be used with either a client-side key or a pre-cached key. To use a cached key for these functions, the caller should pass a `NULL` key parameter and use `wh_Client_SetKeyCmac` to set the appropriate keyId.
+
 
 ## AUTOSAR SHE API
 
