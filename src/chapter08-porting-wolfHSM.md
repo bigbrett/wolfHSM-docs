@@ -1,6 +1,18 @@
 # Porting Guide
 
-## Ports
+## Porting Guide Goals
+
+This porting guide aims to provide you with the necessary resources and knowledge to accurately and correctly port wolfHSM. In this section of the guide, we will look at the following: 
+
+- WolfHSM port applications
+- WolfHSM porting interface
+- WolfHSM porting general configuration 
+- WolfHSM porting example for Posix port
+- WolfHSM porting skeleton 
+- WolfHSM porting Infineon Aurix TC3xx
+- WolfHSM porting ST SPC58NN
+
+## WolfHSM Porting
 
 wolfHSM itself is not executable and it does not contain any code to interact with any specific hardware. In order for wolfHSM to run on a specific device, the library must be configured with the necessary hardware drivers and abstraction layers so that the server application can run and communicate with the client. Specifically, getting wolfHSM to run on real hardware requires the implementation of the following:
 
@@ -17,31 +29,68 @@ Official ports of wolfHSM are provided for various supported architectures, with
 - Standalone Reference Server Application: This application is meant to run on the HSM core and handle all secure operations. It comes fully functional out-of-the-box but can also be customized by the end user to support additional use cases
 - Client Library: This library can be linked against user applications to facilitate communication with the server
 
-## WolfHSM Ports in Progress
+# Ports
+
+## Infineon Aurix TC3XX
+
+(Port in progress)
+The distribution of this  port is restricted by the vendor.  Please contact support@wolfssl.com for access. 
 
 Infineon Aurix TC3xx
 - Up to 6x 300MHz TriCore application cores
 - 1x 100MHz ARM Cortex M3 HSM core
 - Crypto offload: TRNG, AES128, ECDSA, ED25519, SHA
 
+## ST SPC58NN
+
+(Port in progress)
+The distribution of this  port is restricted by the vendor.  Please contact support@wolfssl.com for access. 
+
 ST SPC58NN
 - 3x 200MHz e200z4256 PowerPC application cores
 - 1x 100MHz e200z0 PowerPC HSM core with NVM
 - Crypto offload: TRNG, AES128
 
+## Posix
+
+The Posix port provides multiple and fully functional implementations of different wolfHSM abstractions that can be used to better understand the exact functionality expected for different hardware abstractions.
+
+The Posix port provides:
+- Memory buffer transport
+- TCP transport
+- Unix domain transport
+- NVM device (using a filesystem)
+- Flash device (using a file as a backing store)
+
+## Skeleton 
+
+The Skeleton port source code provides a non-functioning layout to be used as a starting point for future hardware/platform ports.  Each function provides the basic description and expected flow with error cases explained so that ports can be used interchangeably with consistent results.
+
+The Skeleton  port provides implementations of:
+- Transport 
+- NVM Device
+- Flash Device
+- Crytp Device
+
+# WolfHSM Porting Interface
+
 ## WolfHSM Porting Interface Explained 
-When porting WolfHSM in a new platform or ours, you will need to implement some hardware-specific interfaces. We can provide helper functions for flash-like devices. You will need to provide (read, erase, program, blank check, etc.). Our library will likely work on top of it. We can then provide the object layer on top of that. You will also need to provide crypto hardware interfaces like TRNG, Keys, and symmetric/asymmetric crypto. From a platform interface perspective, you will have to understand your system's boot sequence and how the application cores get reset or marked to boot off of it at a specific start location. You may also need to control shared memory locations and memory translation units. The configuration you want to select is selected at compile time rather than link time. In your code, you select which libraries you want to use; here's the config of the libraries, and then work that at compile time, which is an AUTOSAR requirement. 
+When porting WolfHSM into a new platform or ours, you will need to implement some hardware-specific interfaces. We can provide helper functions for flash-like devices. You will need to provide (read, erase, program, blank check, etc.). Our library will likely work on top of it. We can then provide the object layer on top of that. You will also need to provide crypto hardware interfaces like TRNG, Keys, and symmetric/asymmetric crypto. From a platform interface perspective, you will have to understand your system's boot sequence and how the application cores get reset or marked to boot off of it at a specific start location. You may also need to control shared memory locations and memory translation units. The configuration you want to select is selected at compile time rather than link time. In your code, you select which libraries you want to use; here's the config of the libraries, and then work that at compile time, which is an AUTOSAR requirement. 
 
 ## WolfHSM Porting Interface
 
-- Ports must implement hardware-specific interfaces:
+Ports must implement hardware-specific interfaces:
 - Non-volatile memory
 - Flash-like devices (read, erase, program, blankcheck, etc)
-- Crypto Hardware
+
+Crypto Hardware
 - TRNG, Keys, symmetric/asymmetric crypto
-- Platform Interface
+
+Platform Interface
 - Boot sequence, application core reset, memory limitations
 - Port and configuration are selected at compile time
+
+# General Porting Configuration 
 
 ## WolfHSM Port Configuration Example
 
@@ -72,3 +121,33 @@ const whNvmFlashConfig nvm_flash_config[1] = {{
 	.config  = (const void*)pff_config,
 }};
 ```
+
+# WolfHSM Posix Porting Example
+
+## General Steps for Porting Configuration 
+
+## Porting Configuration Example
+
+# WolfHSM Porting Skeleton 
+
+## General Steps for Porting Configuration 
+
+## Porting Configuration Example
+
+# WolfHSM Porting Infineon Aurix TC3xx
+
+## General Steps for Porting Configuration 
+
+## Porting Configuration Example
+
+# WolfHSM Porting ST SPC58NN
+
+## General Steps for Porting Configuration 
+
+## Porting Configuration Example
+
+# Summary
+
+* Each of the implemented port-specific code and resources are kept in port directories organized first by platform vendor and possibly further by product.  Each of the ports is expected to provide the glue logic between wolfHSM abstractions (transport, NVM objects, flash, and cryptocb) and the native or vendor-provided libraries.
+
+Due to the sensitive nature of some platform code, not all of the source and glue logic can be provided in this public repo, but the base directories of these ports are listed here with any public interfaces that can be provided and additional contact information.
