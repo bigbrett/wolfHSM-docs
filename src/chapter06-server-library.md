@@ -20,6 +20,5 @@ TODO
 
 ## Cryptographic
 
-wolfHSM uses wplfCrypt for all cryptographic operations, these incude Chinese mandated ones such as
-SM2, SM3 and SM3. It also supports post-quantum cryptography such as Kyber, LMS, XMSS.
+wolfHSM uses wolfCrypt for all cryptographic operations, which means wolfHSM can offload any algorithm supported by wolfCypt to run on the wolfHSM server. This includes the Chinese government mandated ShāngMì ciphers (SM2, SM3, SM4), as well as post-quantum algorithms such as Kyber, LMS, XMSS, and more!
 
